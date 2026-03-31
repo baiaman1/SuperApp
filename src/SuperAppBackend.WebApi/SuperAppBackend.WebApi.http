@@ -1,0 +1,25 @@
+@SuperAppBackend.WebApi_HostAddress = https://localhost:7152
+@accessToken = put-token-here
+
+GET {{SuperAppBackend.WebApi_HostAddress}}/api/health
+Accept: application/json
+
+###
+
+POST {{SuperAppBackend.WebApi_HostAddress}}/api/auth/development
+Content-Type: application/json
+
+{
+  "email": "demo@superapp.local",
+  "fullName": "Demo User",
+  "deviceName": "Local Swagger",
+  "preferredCurrency": "KZT"
+}
+
+###
+
+GET {{SuperAppBackend.WebApi_HostAddress}}/api/accounts
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+###
