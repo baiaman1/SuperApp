@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SuperAppBackend.Domain.Entities;
+using SuperAppBackend.Domain.Enums;
 
 namespace SuperAppBackend.Infrastructure.Persistence.Configurations;
 
@@ -15,8 +16,26 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.FullName).HasMaxLength(256).IsRequired();
         builder.Property(x => x.PreferredCurrency).HasMaxLength(3).IsRequired();
         builder.Property(x => x.AvatarUrl).HasMaxLength(1024);
+        builder.Property(x => x.Role).HasConversion<int>();
 
         builder.HasIndex(x => x.Email).IsUnique();
+    }
+}
+
+internal sealed class LocalCredentialConfiguration : IEntityTypeConfiguration<LocalCredential>
+{
+    public void Configure(EntityTypeBuilder<LocalCredential> builder)
+    {
+        builder.ToTable("local_credentials");
+        builder.HasKey(x => x.Id);
+
+        builder.Property(x => x.PasswordHash).HasMaxLength(1024).IsRequired();
+        builder.HasIndex(x => x.UserId).IsUnique();
+
+        builder.HasOne(x => x.User)
+            .WithOne(x => x.LocalCredential)
+            .HasForeignKey<LocalCredential>(x => x.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 

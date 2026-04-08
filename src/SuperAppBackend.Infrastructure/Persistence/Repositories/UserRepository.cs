@@ -10,7 +10,9 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
     public Task<User?> GetByIdAsync(Guid userId, CancellationToken cancellationToken)
     {
         return dbContext.Users
+            .AsSplitQuery()
             .Include(x => x.ExternalIdentities)
+            .Include(x => x.LocalCredential)
             .Include(x => x.Accounts)
             .Include(x => x.Categories)
             .FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
@@ -19,7 +21,9 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken)
     {
         return dbContext.Users
+            .AsSplitQuery()
             .Include(x => x.ExternalIdentities)
+            .Include(x => x.LocalCredential)
             .Include(x => x.Accounts)
             .Include(x => x.Categories)
             .FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
@@ -28,7 +32,9 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
     public Task<User?> GetByExternalIdentityAsync(AuthProvider provider, string subject, CancellationToken cancellationToken)
     {
         return dbContext.Users
+            .AsSplitQuery()
             .Include(x => x.ExternalIdentities)
+            .Include(x => x.LocalCredential)
             .Include(x => x.Accounts)
             .Include(x => x.Categories)
             .FirstOrDefaultAsync(

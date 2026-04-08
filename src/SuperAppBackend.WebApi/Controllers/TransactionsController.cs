@@ -36,6 +36,13 @@ public sealed class TransactionsController(ITransactionService transactionServic
         return Ok(response);
     }
 
+    [HttpPut("{transactionId:guid}")]
+    public async Task<ActionResult<TransactionDto>> Update(Guid transactionId, [FromBody] UpdateTransactionRequest request, CancellationToken cancellationToken)
+    {
+        var response = await transactionService.UpdateTransactionAsync(User.GetRequiredUserId(), transactionId, request, cancellationToken);
+        return Ok(response);
+    }
+
     [HttpPost("transfer")]
     public async Task<ActionResult<IReadOnlyCollection<TransactionDto>>> Transfer([FromBody] CreateTransferRequest request, CancellationToken cancellationToken)
     {

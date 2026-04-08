@@ -32,4 +32,11 @@ public sealed class CategoriesController(ICategoryService categoryService) : Con
         var response = await categoryService.UpdateCategoryAsync(User.GetRequiredUserId(), categoryId, request, cancellationToken);
         return Ok(response);
     }
+
+    [HttpDelete("{categoryId:guid}")]
+    public async Task<IActionResult> Delete(Guid categoryId, CancellationToken cancellationToken)
+    {
+        await categoryService.DeleteCategoryAsync(User.GetRequiredUserId(), categoryId, cancellationToken);
+        return NoContent();
+    }
 }

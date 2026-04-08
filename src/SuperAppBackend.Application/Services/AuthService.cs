@@ -15,6 +15,7 @@ public sealed class AuthService(
     IRefreshTokenRepository refreshTokenRepository,
     IGoogleTokenVerifier googleTokenVerifier,
     IJwtTokenService jwtTokenService,
+    IAppPasswordHasher passwordHasher,
     IUnitOfWork unitOfWork) : IAuthService
 {
     private static readonly TimeSpan RefreshTokenLifetime = TimeSpan.FromDays(30);
@@ -54,6 +55,42 @@ public sealed class AuthService(
         return SignInAsync(externalUser, request.DeviceName, request.PreferredCurrency, cancellationToken);
     }
 
+    public async Task<AuthResponse> SignInWithPasswordAsync(PasswordSignInRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            throw new ValidationException("Email is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Password))
+        {
+            throw new ValidationException("Password is required.");
+        }
+
+        var user = await userRepository.GetByEmailAsync(request.Email.Trim().ToLowerInvariant(), cancellationToken);
+        if (user?.LocalCredential is null || !passwordHasher.VerifyPassword(user, user.LocalCredential.PasswordHash, request.Password))
+        {
+            throw new ForbiddenException("Invalid email or password.");
+        }
+
+        if (!user.IsActive)
+        {
+            throw new ForbiddenException("User account is inactive.");
+        }
+
+        var refreshToken = CreateRefreshToken(user.Id, request.DeviceName);
+        await refreshTokenRepository.AddAsync(refreshToken.Entity, cancellationToken);
+
+        var accessToken = jwtTokenService.CreateAccessToken(user.Id, user.Email, user.FullName, user.Role);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return new AuthResponse(
+            accessToken.Token,
+            accessToken.ExpiresAtUtc,
+            refreshToken.RawToken,
+            MapUser(user));
+    }
+
     public async Task<AuthResponse> RefreshAsync(RefreshTokenRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
@@ -78,15 +115,12 @@ public sealed class AuthService(
         var accessToken = jwtTokenService.CreateAccessToken(
             refreshToken.User.Id,
             refreshToken.User.Email,
-            refreshToken.User.FullName);
+            refreshToken.User.FullName,
+            refreshToken.User.Role);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new AuthResponse(
-            accessToken.Token,
-            accessToken.ExpiresAtUtc,
-            replacementToken.RawToken,
-            MapUser(refreshToken.User));
+        return new AuthResponse(accessToken.Token, accessToken.ExpiresAtUtc, replacementToken.RawToken, MapUser(refreshToken.User));
     }
 
     public async Task<UserProfileDto> GetProfileAsync(Guid userId, CancellationToken cancellationToken)
@@ -175,14 +209,10 @@ public sealed class AuthService(
         var refreshToken = CreateRefreshToken(user.Id, deviceName);
         await refreshTokenRepository.AddAsync(refreshToken.Entity, cancellationToken);
 
-        var accessToken = jwtTokenService.CreateAccessToken(user.Id, user.Email, user.FullName);
+        var accessToken = jwtTokenService.CreateAccessToken(user.Id, user.Email, user.FullName, user.Role);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new AuthResponse(
-            accessToken.Token,
-            accessToken.ExpiresAtUtc,
-            refreshToken.RawToken,
-            MapUser(user));
+        return new AuthResponse(accessToken.Token, accessToken.ExpiresAtUtc, refreshToken.RawToken, MapUser(user));
     }
 
     private static (RefreshToken Entity, string RawToken) CreateRefreshToken(Guid userId, string? deviceName)
@@ -205,7 +235,7 @@ public sealed class AuthService(
 
     private static UserProfileDto MapUser(User user)
     {
-        return new UserProfileDto(user.Id, user.Email, user.FullName, user.PreferredCurrency, user.AvatarUrl);
+        return new UserProfileDto(user.Id, user.Email, user.FullName, user.PreferredCurrency, user.AvatarUrl, user.Role);
     }
 }
 

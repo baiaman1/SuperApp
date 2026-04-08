@@ -15,7 +15,14 @@ public interface IGoogleTokenVerifier
 
 public interface IJwtTokenService
 {
-    AccessTokenResult CreateAccessToken(Guid userId, string email, string fullName);
+    AccessTokenResult CreateAccessToken(Guid userId, string email, string fullName, UserRole role);
+}
+
+public interface IAppPasswordHasher
+{
+    string HashPassword(Domain.Entities.User user, string password);
+
+    bool VerifyPassword(Domain.Entities.User user, string passwordHash, string password);
 }
 
 public interface IAuthService
@@ -23,6 +30,8 @@ public interface IAuthService
     Task<AuthResponse> SignInWithGoogleAsync(GoogleSignInRequest request, CancellationToken cancellationToken);
 
     Task<AuthResponse> SignInDevelopmentAsync(DevelopmentSignInRequest request, CancellationToken cancellationToken);
+
+    Task<AuthResponse> SignInWithPasswordAsync(PasswordSignInRequest request, CancellationToken cancellationToken);
 
     Task<AuthResponse> RefreshAsync(RefreshTokenRequest request, CancellationToken cancellationToken);
 
@@ -45,6 +54,8 @@ public interface ICategoryService
     Task<CategoryDto> CreateCategoryAsync(Guid userId, CreateCategoryRequest request, CancellationToken cancellationToken);
 
     Task<CategoryDto> UpdateCategoryAsync(Guid userId, Guid categoryId, UpdateCategoryRequest request, CancellationToken cancellationToken);
+
+    Task DeleteCategoryAsync(Guid userId, Guid categoryId, CancellationToken cancellationToken);
 }
 
 public interface ITransactionService
@@ -52,6 +63,8 @@ public interface ITransactionService
     Task<PagedResult<TransactionDto>> GetTransactionsAsync(Guid userId, TransactionListFilter filter, CancellationToken cancellationToken);
 
     Task<TransactionDto> CreateTransactionAsync(Guid userId, CreateTransactionRequest request, CancellationToken cancellationToken);
+
+    Task<TransactionDto> UpdateTransactionAsync(Guid userId, Guid transactionId, UpdateTransactionRequest request, CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<TransactionDto>> CreateTransferAsync(Guid userId, CreateTransferRequest request, CancellationToken cancellationToken);
 

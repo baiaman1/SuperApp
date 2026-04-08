@@ -1,4 +1,5 @@
 using SuperAppBackend.Domain.Common;
+using SuperAppBackend.Domain.Enums;
 
 namespace SuperAppBackend.Domain.Entities;
 
@@ -14,7 +15,11 @@ public sealed class User : AuditableEntity
 
     public bool IsActive { get; set; } = true;
 
+    public UserRole Role { get; set; } = UserRole.User;
+
     public ICollection<ExternalIdentity> ExternalIdentities { get; set; } = new List<ExternalIdentity>();
+
+    public LocalCredential? LocalCredential { get; set; }
 
     public ICollection<MoneyAccount> Accounts { get; set; } = new List<MoneyAccount>();
 

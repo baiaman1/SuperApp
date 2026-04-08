@@ -15,11 +15,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SuperAppBackend.Application\SuperAppBackend.Application.csproj" />
+    <ProjectReference Include="..\SuperAppBackend.Infrastructure\SuperAppBackend.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="SuperAppBackend.Application">
       <HintPath>..\SuperAppBackend.Application\bin\$(Configuration)\net8.0\SuperAppBackend.Application.dll</HintPath>
-    </Reference>
-    <Reference Include="SuperAppBackend.Domain">
-      <HintPath>..\SuperAppBackend.Domain\bin\$(Configuration)\net8.0\SuperAppBackend.Domain.dll</HintPath>
     </Reference>
     <Reference Include="SuperAppBackend.Infrastructure">
       <HintPath>..\SuperAppBackend.Infrastructure\bin\$(Configuration)\net8.0\SuperAppBackend.Infrastructure.dll</HintPath>

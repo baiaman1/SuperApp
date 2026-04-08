@@ -3,12 +3,31 @@ using Microsoft.OpenApi.Models;
 using SuperAppBackend.Application;
 using SuperAppBackend.Infrastructure;
 using SuperAppBackend.Infrastructure.Persistence;
+using SuperAppBackend.Infrastructure.Persistence.Seeding;
 using SuperAppBackend.WebApi.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendDevelopment", policy =>
+    {
+        policy
+            .SetIsOriginAllowed(origin =>
+            {
+                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                {
+                    return false;
+                }
+
+                return uri.Host is "localhost" or "127.0.0.1" or "[::1]";
+            })
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -44,14 +63,39 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-if (app.Configuration.GetValue("Database:AutoApplyOnStartup", true))
+var databaseOptions = app.Configuration
+    .GetSection(DatabaseStartupOptions.SectionName)
+    .Get<DatabaseStartupOptions>() ?? new DatabaseStartupOptions();
+
+if (databaseOptions.ResetOnStartup)
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await dbContext.Database.EnsureDeletedAsync();
+}
+
+if (databaseOptions.AutoApplyOnStartup)
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await dbContext.Database.EnsureCreatedAsync();
+    var schemaBootstrapper = scope.ServiceProvider.GetRequiredService<DatabaseSchemaBootstrapper>();
+    await schemaBootstrapper.EnsureCompatibilityAsync();
+}
+
+if (databaseOptions.SeedMockDataOnStartup)
+{
+    using var scope = app.Services.CreateScope();
+    var seeder = scope.ServiceProvider.GetRequiredService<AppDataSeeder>();
+    await seeder.SeedAsync();
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("FrontendDevelopment");
+}
+
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {

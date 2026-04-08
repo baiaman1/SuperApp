@@ -26,6 +26,14 @@ public sealed class AuthController(IAuthService authService, IHostEnvironment en
         return Ok(response);
     }
 
+    [HttpPost("login")]
+    [AllowAnonymous]
+    public async Task<ActionResult<AuthResponse>> Login([FromBody] PasswordSignInRequest request, CancellationToken cancellationToken)
+    {
+        var response = await authService.SignInWithPasswordAsync(request, cancellationToken);
+        return Ok(response);
+    }
+
     [HttpPost("development")]
     [AllowAnonymous]
     public async Task<ActionResult<AuthResponse>> DevelopmentSignIn([FromBody] DevelopmentSignInRequest request, CancellationToken cancellationToken)

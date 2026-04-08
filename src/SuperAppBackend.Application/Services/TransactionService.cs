@@ -73,6 +73,52 @@ public sealed class TransactionService(
         return Map(transaction);
     }
 
+    public async Task<TransactionDto> UpdateTransactionAsync(Guid userId, Guid transactionId, UpdateTransactionRequest request, CancellationToken cancellationToken)
+    {
+        ValidateTransactionRequest(request.AccountId, request.CategoryId, request.Amount);
+
+        if (request.EntryType is TransactionEntryType.TransferIn or TransactionEntryType.TransferOut)
+        {
+            throw new ValidationException("Редактирование переводов пока не поддерживается. Удалите перевод и создайте его заново.");
+        }
+
+        var transaction = await transactionRepository.GetByIdAsync(userId, transactionId, cancellationToken)
+            ?? throw new NotFoundException("Операция не найдена.");
+
+        if (transaction.TransferGroupId.HasValue)
+        {
+            throw new ValidationException("Редактирование переводов пока не поддерживается. Удалите перевод и создайте его заново.");
+        }
+
+        var affectedAccountIds = new[] { transaction.AccountId, request.AccountId }.Distinct().ToArray();
+        var accounts = await accountRepository.GetByIdsAsync(userId, affectedAccountIds, cancellationToken);
+        var currentAccount = accounts.SingleOrDefault(x => x.Id == transaction.AccountId)
+            ?? throw new NotFoundException("Счет операции не найден.");
+        var nextAccount = accounts.SingleOrDefault(x => x.Id == request.AccountId)
+            ?? throw new NotFoundException("Новый счет не найден.");
+
+        var category = await categoryRepository.GetByIdAsync(userId, request.CategoryId, cancellationToken)
+            ?? throw new NotFoundException("Категория не найдена.");
+
+        EnsureCategoryMatches(request.EntryType, category.Kind);
+
+        ApplyAccountBalance(currentAccount, GetReverseEntryType(transaction.EntryType), transaction.Amount);
+        ApplyAccountBalance(nextAccount, request.EntryType, request.Amount);
+
+        transaction.AccountId = nextAccount.Id;
+        transaction.Account = nextAccount;
+        transaction.CategoryId = category.Id;
+        transaction.Category = category;
+        transaction.EntryType = request.EntryType;
+        transaction.Amount = request.Amount;
+        transaction.Note = request.Note?.Trim();
+        transaction.OccurredAtUtc = request.OccurredAtUtc == default ? DateTimeOffset.UtcNow : request.OccurredAtUtc;
+        transaction.UpdatedAtUtc = DateTimeOffset.UtcNow;
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return Map(transaction);
+    }
+
     public async Task<IReadOnlyCollection<TransactionDto>> CreateTransferAsync(Guid userId, CreateTransferRequest request, CancellationToken cancellationToken)
     {
         if (request.FromAccountId == request.ToAccountId)
@@ -165,6 +211,24 @@ public sealed class TransactionService(
         }
 
         if (request.CategoryId == Guid.Empty)
+        {
+            throw new ValidationException("CategoryId обязателен.");
+        }
+    }
+
+    private static void ValidateTransactionRequest(Guid accountId, Guid categoryId, decimal amount)
+    {
+        if (amount <= 0)
+        {
+            throw new ValidationException("Сумма операции должна быть больше нуля.");
+        }
+
+        if (accountId == Guid.Empty)
+        {
+            throw new ValidationException("AccountId обязателен.");
+        }
+
+        if (categoryId == Guid.Empty)
         {
             throw new ValidationException("CategoryId обязателен.");
         }

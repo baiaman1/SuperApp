@@ -18,6 +18,17 @@ Content-Type: application/json
 
 ###
 
+POST {{SuperAppBackend.WebApi_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@superapp.local",
+  "password": "Admin123!",
+  "deviceName": "Local Swagger"
+}
+
+###
+
 GET {{SuperAppBackend.WebApi_HostAddress}}/api/accounts
 Accept: application/json
 Authorization: Bearer {{accessToken}}

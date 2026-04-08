@@ -10,6 +10,14 @@ public sealed record CreateTransactionRequest(
     string? Note,
     DateTimeOffset OccurredAtUtc);
 
+public sealed record UpdateTransactionRequest(
+    Guid AccountId,
+    Guid CategoryId,
+    TransactionEntryType EntryType,
+    decimal Amount,
+    string? Note,
+    DateTimeOffset OccurredAtUtc);
+
 public sealed record CreateTransferRequest(
     Guid FromAccountId,
     Guid ToAccountId,

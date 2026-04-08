@@ -11,6 +11,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<ExternalIdentity> ExternalIdentities => Set<ExternalIdentity>();
 
+    public DbSet<LocalCredential> LocalCredentials => Set<LocalCredential>();
+
     public DbSet<MoneyAccount> Accounts => Set<MoneyAccount>();
 
     public DbSet<Category> Categories => Set<Category>();

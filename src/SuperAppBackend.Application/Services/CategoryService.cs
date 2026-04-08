@@ -61,6 +61,17 @@ public sealed class CategoryService(
         return Map(category);
     }
 
+    public async Task DeleteCategoryAsync(Guid userId, Guid categoryId, CancellationToken cancellationToken)
+    {
+        var category = await categoryRepository.GetByIdAsync(userId, categoryId, cancellationToken)
+            ?? throw new NotFoundException("РљР°С‚РµРіРѕСЂРёСЏ РЅРµ РЅР°Р№РґРµРЅР°.");
+
+        category.IsArchived = true;
+        category.UpdatedAtUtc = DateTimeOffset.UtcNow;
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
     private static CategoryDto Map(Category category)
     {
         return new CategoryDto(

@@ -26,4 +26,9 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SuperAppBackend.Application\SuperAppBackend.Application.csproj" />
+    <ProjectReference Include="..\SuperAppBackend.Domain\SuperAppBackend.Domain.csproj" />
+  </ItemGroup>
+
 </Project>

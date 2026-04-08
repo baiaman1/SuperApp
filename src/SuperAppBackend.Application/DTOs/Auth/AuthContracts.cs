@@ -6,6 +6,8 @@ public sealed record GoogleSignInRequest(string IdToken, string DeviceName, stri
 
 public sealed record DevelopmentSignInRequest(string Email, string FullName, string DeviceName, string? PreferredCurrency);
 
+public sealed record PasswordSignInRequest(string Email, string Password, string DeviceName);
+
 public sealed record RefreshTokenRequest(string RefreshToken, string DeviceName);
 
 public sealed record ExternalUserInfo(
@@ -20,7 +22,8 @@ public sealed record UserProfileDto(
     string Email,
     string FullName,
     string PreferredCurrency,
-    string? AvatarUrl);
+    string? AvatarUrl,
+    UserRole Role);
 
 public sealed record AuthResponse(
     string AccessToken,

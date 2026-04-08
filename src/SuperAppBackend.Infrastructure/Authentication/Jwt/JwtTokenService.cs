@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SuperAppBackend.Application.DTOs.Auth;
 using SuperAppBackend.Application.Interfaces.Services;
+using SuperAppBackend.Domain.Enums;
 
 namespace SuperAppBackend.Infrastructure.Authentication.Jwt;
 
@@ -12,7 +13,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
 {
     private readonly JwtOptions _options = options.Value;
 
-    public AccessTokenResult CreateAccessToken(Guid userId, string email, string fullName)
+    public AccessTokenResult CreateAccessToken(Guid userId, string email, string fullName, UserRole role)
     {
         var now = DateTimeOffset.UtcNow;
         var expiresAt = now.AddMinutes(_options.AccessTokenMinutes);
@@ -24,7 +25,8 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
             new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, email),
             new Claim(JwtRegisteredClaimNames.Name, fullName),
-            new Claim(ClaimTypes.NameIdentifier, userId.ToString())
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+            new Claim(ClaimTypes.Role, role.ToString())
         };
 
         var tokenDescriptor = new JwtSecurityToken(
