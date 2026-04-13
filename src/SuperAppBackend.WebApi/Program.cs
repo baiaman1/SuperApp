@@ -34,7 +34,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "SuperAppBackend API",
         Version = "v1",
-        Description = "API for money tracking and future SuperApp services."
+        Description = "API for money tracking and future SuperApp services.Baiaman"
     });
 
     var jwtSecurityScheme = new OpenApiSecurityScheme
