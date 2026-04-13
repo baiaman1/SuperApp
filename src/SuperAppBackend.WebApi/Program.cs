@@ -12,18 +12,13 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("FrontendDevelopment", policy =>
+    options.AddPolicy("ProdCors", policy =>
     {
         policy
-            .SetIsOriginAllowed(origin =>
-            {
-                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
-                {
-                    return false;
-                }
-
-                return uri.Host is "localhost" or "127.0.0.1" or "[::1]";
-            })
+            .WithOrigins(
+                "http://13.220.53.240",
+                "http://localhost:3000"
+            )
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
