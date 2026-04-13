@@ -1,0 +1,24 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /var/www/superapp-src || git clone https://github.com/ТВОЙ_USERNAME/ТВОЙ_REPO.git /var/www/superapp-src
+            cd /var/www/superapp-src
+            git pull
+            dotnet publish -c Release -o /var/www/superapp
+            sudo systemctl restart superapp
