@@ -19,11 +19,11 @@ jobs:
           script: |
             set -e
 
-            if [ ! -d /var/www/superapp-src/.git ]; then
-              git clone https://github.com/baiaman1/SuperApp.git /var/www/superapp-src
+            if [ ! -d /var/www/superapp/.git ]; then
+              git clone https://github.com/baiaman1/SuperApp.git /var/www/superapp
             fi
 
-            cd /var/www/superapp-src
+            cd /var/www/superapp
             git fetch --all
             git reset --hard origin/master
 
