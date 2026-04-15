@@ -28,7 +28,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-// 🔥 DB init (оставляем)
+// DB init (оставляем)
 var databaseOptions = app.Configuration
     .GetSection(DatabaseStartupOptions.SectionName)
     .Get<DatabaseStartupOptions>() ?? new DatabaseStartupOptions();
@@ -38,6 +38,12 @@ if (databaseOptions.AutoApplyOnStartup)
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await dbContext.Database.EnsureCreatedAsync();
+
+    var schemaBootstrapper = scope.ServiceProvider.GetRequiredService<DatabaseSchemaBootstrapper>();
+    await schemaBootstrapper.EnsureCompatibilityAsync();
+
+    var appDataSeeder = scope.ServiceProvider.GetRequiredService<AppDataSeeder>();
+    await appDataSeeder.SeedAsync();
 }
 
 // 🔥 MIDDLEWARE (ПРАВИЛЬНЫЙ ПОРЯДОК)
@@ -52,7 +58,6 @@ app.UseSwaggerUI(c =>
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "API");
 });
 
-// ❌ УБРАТЬ пока нет HTTPS
 // app.UseHttpsRedirection();
 
 app.UseAuthentication();
@@ -60,6 +65,5 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// ✅ ТОЛЬКО ОДИН RUN
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
 app.Run($"http://0.0.0.0:{port}");

@@ -57,6 +57,13 @@ public sealed class AppDataSeeder(
             user.LocalCredential = CreateCredential(user, _options.SuperAdminPassword);
             changed = true;
         }
+        else if (!passwordHasher.VerifyPassword(user, user.LocalCredential.PasswordHash, _options.SuperAdminPassword))
+        {
+            user.LocalCredential.PasswordHash = passwordHasher.HashPassword(user, _options.SuperAdminPassword);
+            user.LocalCredential.PasswordChangedAtUtc = DateTimeOffset.UtcNow;
+            user.LocalCredential.UpdatedAtUtc = DateTimeOffset.UtcNow;
+            changed = true;
+        }
 
         if (!user.Accounts.Any())
         {
@@ -79,13 +86,51 @@ public sealed class AppDataSeeder(
     private async Task SeedDemoUserAsync(CancellationToken cancellationToken)
     {
         var email = _options.DemoUserEmail.Trim().ToLowerInvariant();
-        var exists = await dbContext.Users.AnyAsync(x => x.Email == email, cancellationToken);
-        if (exists)
+        var user = await dbContext.Users
+            .Include(x => x.LocalCredential)
+            .Include(x => x.Accounts)
+            .Include(x => x.Categories)
+            .FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
+
+        if (user is not null)
         {
+            var changed = false;
+
+            if (user.LocalCredential is null)
+            {
+                user.LocalCredential = CreateCredential(user, _options.DemoUserPassword);
+                changed = true;
+            }
+            else if (!passwordHasher.VerifyPassword(user, user.LocalCredential.PasswordHash, _options.DemoUserPassword))
+            {
+                user.LocalCredential.PasswordHash = passwordHasher.HashPassword(user, _options.DemoUserPassword);
+                user.LocalCredential.PasswordChangedAtUtc = DateTimeOffset.UtcNow;
+                user.LocalCredential.UpdatedAtUtc = DateTimeOffset.UtcNow;
+                changed = true;
+            }
+
+            if (!user.Accounts.Any())
+            {
+                user.Accounts.Add(DefaultDataFactory.CreateDefaultAccount(user.Id, user.PreferredCurrency));
+                changed = true;
+            }
+
+            if (!user.Categories.Any())
+            {
+                AddDefaultCategories(user);
+                changed = true;
+            }
+
+            if (changed)
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+                logger.LogInformation("Ensured demo user {Email} local credentials and defaults.", email);
+            }
+
             return;
         }
 
-        var user = CreateUser("Demo User", email, UserRole.User, "KZT");
+        user = CreateUser("Demo User", email, UserRole.User, "KZT");
         user.LocalCredential = CreateCredential(user, _options.DemoUserPassword);
 
         var categories = DefaultDataFactory.CreateDefaultCategories(user.Id).ToList();
