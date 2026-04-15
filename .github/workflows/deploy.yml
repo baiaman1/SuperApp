@@ -9,52 +9,72 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    env:
+      HOST: 32.194.207.165
+      USER: ubuntu
+      APP_DIR: /var/www/superapp
+      TMP_DIR: /home/ubuntu/superapp-deploy
+      ARCHIVE: /home/ubuntu/superapp-backend.tar.gz
+
     steps:
-      - name: SSH Deploy
-        uses: appleboy/ssh-action@v1.0.0
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
         with:
-          host: 32.194.207.165
-          username: ubuntu
-          key: ${{ secrets.SSH_KEY }}
-          command_timeout: 30m
-          script: |
+          dotnet-version: 8.0.x
+
+      - name: Publish backend
+        run: |
+          set -euo pipefail
+
+          dotnet restore src/SuperAppBackend.WebApi/SuperAppBackend.WebApi.csproj
+          dotnet publish src/SuperAppBackend.WebApi/SuperAppBackend.WebApi.csproj \
+            -c Release \
+            -o publish \
+            /p:UseAppHost=false
+
+          tar -czf superapp-backend.tar.gz -C publish .
+
+      - name: Setup SSH
+        run: |
+          set -euo pipefail
+
+          mkdir -p ~/.ssh
+          printf "%s" "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload package
+        run: |
+          set -euo pipefail
+          scp superapp-backend.tar.gz "$USER@$HOST:$ARCHIVE"
+
+      - name: Deploy on server
+        run: |
+          set -euo pipefail
+
+          ssh "$USER@$HOST" "
             set -euo pipefail
 
-            REPO_URL="https://github.com/baiaman1/SuperApp.git"
-            BRANCH="master"
-            SRC_DIR="/home/ubuntu/superapp-src"
-            PUBLISH_DIR="/home/ubuntu/superapp-publish"
-            APP_DIR="/var/www/superapp"
+            rm -rf '$TMP_DIR'
+            mkdir -p '$TMP_DIR'
+            tar -xzf '$ARCHIVE' -C '$TMP_DIR'
 
-            if [ ! -d "$SRC_DIR/.git" ]; then
-              rm -rf "$SRC_DIR"
-              git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$SRC_DIR"
-            fi
-
-            cd "$SRC_DIR"
-            git fetch origin "$BRANCH" --prune
-            git reset --hard "origin/$BRANCH"
-
-            rm -rf "$PUBLISH_DIR"
-            mkdir -p "$PUBLISH_DIR"
-
-            dotnet publish src/SuperAppBackend.WebApi/SuperAppBackend.WebApi.csproj \
-              -c Release \
-              -o "$PUBLISH_DIR"
-
-            sudo mkdir -p "$APP_DIR"
-            sudo rsync -a --delete "$PUBLISH_DIR"/ "$APP_DIR"/
+            sudo mkdir -p '$APP_DIR'
+            sudo rsync -a --delete '$TMP_DIR'/ '$APP_DIR'/
 
             sudo systemctl restart superapp
 
-            for i in $(seq 1 30); do
+            for i in \$(seq 1 30); do
               if curl -fsS http://127.0.0.1:5000/api/health > /dev/null; then
-                echo "Health check passed"
+                echo 'Health check passed'
                 break
               fi
 
-              if [ "$i" -eq 30 ]; then
-                echo "Health check failed after waiting"
+              if [ \"\$i\" -eq 30 ]; then
+                echo 'Health check failed after waiting'
                 sudo systemctl status superapp --no-pager -l || true
                 sudo journalctl -u superapp -n 100 --no-pager || true
                 exit 1
@@ -65,3 +85,4 @@ jobs:
 
             sudo systemctl status superapp --no-pager -l
             curl -fsS http://127.0.0.1:5000/api/health
+          "
