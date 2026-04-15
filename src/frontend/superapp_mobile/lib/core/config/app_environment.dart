@@ -3,9 +3,14 @@ import 'package:flutter/foundation.dart';
 final class AppEnvironment {
   const AppEnvironment._();
 
+  static const _configuredApiBaseUrl = String.fromEnvironment('API_BASE_URL');
+
   static String get apiBaseUrl {
-    // 👉 теперь везде используем прод сервер
-    return 'http://13.220.53.240';
+    if (_configuredApiBaseUrl.isNotEmpty) {
+      return _configuredApiBaseUrl;
+    }
+
+    return 'http://13.220.53.240:5000';
   }
 
   static String get deviceName {

@@ -17,8 +17,19 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd /var/www/superapp-src || git clone https://github.com/baiaman1/SuperApp.git /var/www/superapp-src
+            set -e
+
+            if [ ! -d /var/www/superapp-src/.git ]; then
+              git clone https://github.com/baiaman1/SuperApp.git /var/www/superapp-src
+            fi
+
             cd /var/www/superapp-src
-            git pull
-            dotnet publish -c Release -o /var/www/superapp
-            sudo systemctl restart superapp
+            git fetch --all
+            git reset --hard origin/master
+
+            dotnet publish src/SuperAppBackend.WebApi/SuperAppBackend.WebApi.csproj -c Release -o /var/www/superapp
+
+            sudo -n systemctl restart superapp
+            sudo -n systemctl status superapp --no-pager -l
+
+            curl -f http://127.0.0.1:5000/api/health
