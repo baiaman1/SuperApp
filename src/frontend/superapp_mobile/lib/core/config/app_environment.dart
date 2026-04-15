@@ -10,7 +10,7 @@ final class AppEnvironment {
       return _configuredApiBaseUrl;
     }
 
-    return 'http://54.164.9.91';
+    return 'http://32.194.207.165';
   }
 
   static String get deviceName {
