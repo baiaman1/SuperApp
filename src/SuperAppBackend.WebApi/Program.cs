@@ -16,10 +16,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("ProdCors", policy =>
     {
         policy
-            .WithOrigins(
-                "http://13.220.53.240",
-                "http://localhost:3000"
-            )
+            .AllowAnyOrigin()
             .AllowAnyHeader()
             .AllowAnyMethod();
     });

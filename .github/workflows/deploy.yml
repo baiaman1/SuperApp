@@ -16,17 +16,15 @@ jobs:
           host: 32.194.207.165
           username: ubuntu
           key: ${{ secrets.SSH_KEY }}
-          command_timeout: 20m
+          command_timeout: 30m
           script: |
             set -euo pipefail
 
             REPO_URL="https://github.com/baiaman1/SuperApp.git"
             BRANCH="master"
             SRC_DIR="/home/ubuntu/superapp-src"
+            PUBLISH_DIR="/home/ubuntu/superapp-publish"
             APP_DIR="/var/www/superapp"
-
-            mkdir -p "$SRC_DIR"
-            sudo mkdir -p "$APP_DIR"
 
             if [ ! -d "$SRC_DIR/.git" ]; then
               rm -rf "$SRC_DIR"
@@ -37,9 +35,33 @@ jobs:
             git fetch origin "$BRANCH" --prune
             git reset --hard "origin/$BRANCH"
 
-            dotnet publish src/SuperAppBackend.WebApi/SuperAppBackend.WebApi.csproj -c Release -o "$APP_DIR"
+            rm -rf "$PUBLISH_DIR"
+            mkdir -p "$PUBLISH_DIR"
+
+            dotnet publish src/SuperAppBackend.WebApi/SuperAppBackend.WebApi.csproj \
+              -c Release \
+              -o "$PUBLISH_DIR"
+
+            sudo mkdir -p "$APP_DIR"
+            sudo rsync -a --delete "$PUBLISH_DIR"/ "$APP_DIR"/
 
             sudo systemctl restart superapp
-            sudo systemctl status superapp --no-pager -l
 
-            curl -f http://127.0.0.1:5000/api/health
+            for i in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:5000/api/health > /dev/null; then
+                echo "Health check passed"
+                break
+              fi
+
+              if [ "$i" -eq 30 ]; then
+                echo "Health check failed after waiting"
+                sudo systemctl status superapp --no-pager -l || true
+                sudo journalctl -u superapp -n 100 --no-pager || true
+                exit 1
+              fi
+
+              sleep 2
+            done
+
+            sudo systemctl status superapp --no-pager -l
+            curl -fsS http://127.0.0.1:5000/api/health
