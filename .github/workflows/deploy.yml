@@ -16,20 +16,30 @@ jobs:
           host: 32.194.207.165
           username: ubuntu
           key: ${{ secrets.SSH_KEY }}
+          command_timeout: 20m
           script: |
-            set -e
+            set -euo pipefail
 
-            if [ ! -d /var/www/superapp/.git ]; then
-              git clone https://github.com/baiaman1/SuperApp.git /var/www/superapp
+            REPO_URL="https://github.com/baiaman1/SuperApp.git"
+            BRANCH="master"
+            SRC_DIR="/home/ubuntu/superapp-src"
+            APP_DIR="/var/www/superapp"
+
+            mkdir -p "$SRC_DIR"
+            sudo mkdir -p "$APP_DIR"
+
+            if [ ! -d "$SRC_DIR/.git" ]; then
+              rm -rf "$SRC_DIR"
+              git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$SRC_DIR"
             fi
 
-            cd /var/www/superapp
-            git fetch --all
-            git reset --hard origin/master
+            cd "$SRC_DIR"
+            git fetch origin "$BRANCH" --prune
+            git reset --hard "origin/$BRANCH"
 
-            dotnet publish src/SuperAppBackend.WebApi/SuperAppBackend.WebApi.csproj -c Release -o /var/www/superapp
+            dotnet publish src/SuperAppBackend.WebApi/SuperAppBackend.WebApi.csproj -c Release -o "$APP_DIR"
 
-            sudo -n systemctl restart superapp
-            sudo -n systemctl status superapp --no-pager -l
+            sudo systemctl restart superapp
+            sudo systemctl status superapp --no-pager -l
 
             curl -f http://127.0.0.1:5000/api/health
