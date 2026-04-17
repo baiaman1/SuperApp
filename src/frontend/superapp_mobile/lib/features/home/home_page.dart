@@ -4130,6 +4130,16 @@ const _categoryIconOptions = [
     label: 'Покупки',
     icon: Icons.shopping_bag_rounded,
   ),
+  _CategoryIconOption(
+    key: 'people',
+    label: 'Люди',
+    icon: Icons.people,
+  ),
+  _CategoryIconOption(
+    key: 'bus',
+    label: 'Проездные',
+    icon: Icons.bus_alert_rounded,
+  ),
 ];
 
 const _categoryColorOptions = [
