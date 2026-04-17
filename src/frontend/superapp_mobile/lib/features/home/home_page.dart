@@ -255,8 +255,6 @@ class _AddFlowTab extends StatelessWidget {
           QuickComposerCard(controller: controller),
           const SizedBox(height: 16),
           _SectionSurface(
-            title: 'Быстрые действия',
-            subtitle: 'Основные вещи без лишних экранов.',
             child: Row(
               children: [
                 Expanded(
@@ -312,8 +310,6 @@ class _AccountsManagerTab extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 120),
         children: [
           _SectionSurface(
-            title: 'Счета',
-            subtitle: 'Добавляй счета и переводи деньги между ними.',
             child: Column(
               children: [
                 Row(
@@ -420,16 +416,16 @@ class _HistoryTabState extends State<_HistoryTab> {
         padding: const EdgeInsets.only(bottom: 120),
         children: [
           _PeriodSelectorCard(
-            title: 'История операций',
-            subtitle: 'День, месяц, год или свой период.',
+            // title: 'История операций',
+            // subtitle: 'День, месяц, год или свой период.',
             selectedPeriod: _period,
             customRange: _customRange,
             onSelect: _onSelectPeriod,
           ),
           const SizedBox(height: 16),
           _SectionSurface(
-            title: 'Тип операций',
-            subtitle: 'Покажи все записи или только один поток.',
+            // title: 'Тип операций',
+            // subtitle: 'Покажи все записи или только один поток.',
             child: SegmentedButton<_HistoryEntryFilter>(
               segments: const [
                 ButtonSegment<_HistoryEntryFilter>(
@@ -742,8 +738,8 @@ class _ReportsTabState extends State<_ReportsTab> {
         padding: const EdgeInsets.only(bottom: 120),
         children: [
           _PeriodSelectorCard(
-            title: 'Отчеты и категории',
-            subtitle: 'Смотри картину по доходам, расходам и категориям.',
+            // title: 'Отчеты и категории',
+            // subtitle: 'Смотри картину по доходам, расходам и категориям.',
             selectedPeriod: _period,
             customRange: _customRange,
             onSelect: _onSelectPeriod,
@@ -1235,8 +1231,6 @@ class _QuickComposerCardState extends State<QuickComposerCard> {
     }
 
     return _SectionSurface(
-      title: 'Быстро добавить',
-      subtitle: 'Введи сумму и тапни по категории.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1717,15 +1711,15 @@ class _ManagedAccountTile extends StatelessWidget {
 
 class _PeriodSelectorCard extends StatelessWidget {
   const _PeriodSelectorCard({
-    required this.title,
-    required this.subtitle,
+    this.title,
+    this.subtitle,
     required this.selectedPeriod,
     required this.customRange,
     required this.onSelect,
   });
 
-  final String title;
-  final String subtitle;
+  final String? title;
+  final String? subtitle;
   final _FilterPeriod selectedPeriod;
   final DateTimeRange? customRange;
   final Future<void> Function(_FilterPeriod period) onSelect;
@@ -1768,7 +1762,6 @@ class _PeriodSelectorCard extends StatelessWidget {
     );
   }
 }
-
 class _PeriodChip extends StatelessWidget {
   const _PeriodChip({
     required this.label,
@@ -2624,11 +2617,11 @@ class _AccountEditorSheetState extends State<_AccountEditorSheet> {
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 8),
-            Text(
-              _isEditing
-                  ? 'Название и тип можно поменять в любой момент.'
-                  : 'Создай отдельный счет для наличных, карты или накоплений.',
-            ),
+            // Text(
+            //   _isEditing
+            //       ? 'Название и тип можно поменять в любой момент.'
+            //       : 'Создай отдельный счет для наличных, карты или накоплений.',
+            // ),
             const SizedBox(height: 18),
             Form(
               key: _formKey,
@@ -2870,9 +2863,9 @@ class _TransferSheetState extends State<_TransferSheet> {
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Деньги уйдут с одного счета и придут на другой одной операцией.',
-            ),
+            // const Text(
+            //   'Деньги уйдут с одного счета и придут на другой одной операцией.',
+            // ),
             const SizedBox(height: 18),
             Form(
               key: _formKey,
@@ -3437,7 +3430,7 @@ class _CategoryBreakdownCard extends StatelessWidget {
 
     return _SectionSurface(
       title: 'Диаграмма расходов',
-      subtitle: 'Самые заметные категории в текущем списке операций.',
+      // subtitle: 'Самые заметные категории в текущем списке операций.',
       child: items.isEmpty
           ? const Text(
               'Добавь расходы, и здесь появится диаграмма по категориям.',
@@ -3679,13 +3672,13 @@ class _InfoBanner extends StatelessWidget {
 
 class _SectionSurface extends StatelessWidget {
   const _SectionSurface({
-    required this.title,
-    required this.subtitle,
+    this.title,
+    this.subtitle,
     required this.child,
   });
 
-  final String title;
-  final String subtitle;
+  final String? title;
+  final String? subtitle;
   final Widget child;
 
   @override
@@ -3698,10 +3691,14 @@ class _SectionSurface extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: theme.textTheme.headlineSmall),
-          const SizedBox(height: 6),
-          Text(subtitle, style: theme.textTheme.bodyMedium),
-          const SizedBox(height: 18),
+          if (title != null) ...[
+            Text(title!, style: theme.textTheme.headlineSmall),
+            const SizedBox(height: 6),
+          ],
+          if (subtitle != null) ...[
+            Text(subtitle!, style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 18),
+          ],
           child,
         ],
       ),
@@ -3806,12 +3803,12 @@ class _CreateTransactionSheetState extends State<_CreateTransactionSheet> {
               _isEditing ? 'Редактировать операцию' : 'Новая операция',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
-            const SizedBox(height: 8),
-            Text(
-              _isEditing
-                  ? 'Исправь сумму, счет, категорию или дату в той же форме.'
-                  : 'Подробный ввод с датой и комментарием.',
-            ),
+            // const SizedBox(height: 8),
+            // Text(
+            //   _isEditing
+            //       ? 'Исправь сумму, счет, категорию или дату в той же форме.'
+            //       : 'Подробный ввод с датой и комментарием.',
+            // ),
             const SizedBox(height: 18),
             Form(
               key: _formKey,
