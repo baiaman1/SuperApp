@@ -40,6 +40,15 @@ bool _readBool(Object? value) {
 
 String _readString(Object? value) => value?.toString() ?? '';
 
+String _readCurrencyCode(Object? value) {
+  final raw = _readString(value).trim().toUpperCase();
+  if (raw.isEmpty || raw == 'KZT') {
+    return 'KGS';
+  }
+
+  return raw;
+}
+
 DateTime _readDateTime(Object? value) {
   final text = _readString(value);
   if (text.isEmpty) {
@@ -149,9 +158,7 @@ class UserProfile {
       id: _readString(json['id']),
       email: _readString(json['email']),
       fullName: _readString(json['fullName']),
-      preferredCurrency: _readString(json['preferredCurrency']).isEmpty
-          ? 'KZT'
-          : _readString(json['preferredCurrency']),
+      preferredCurrency: _readCurrencyCode(json['preferredCurrency']),
       avatarUrl: json['avatarUrl']?.toString(),
       role: UserRole.fromCode(json['role']),
     );
@@ -162,7 +169,7 @@ class UserProfile {
       'id': id,
       'email': email,
       'fullName': fullName,
-      'preferredCurrency': preferredCurrency,
+      'preferredCurrency': _readCurrencyCode(preferredCurrency),
       'avatarUrl': avatarUrl,
       'role': role == UserRole.superAdmin ? 2 : 1,
     };
@@ -275,7 +282,7 @@ class MoneyAccount {
     return MoneyAccount(
       id: _readString(json['id']),
       name: _readString(json['name']),
-      currencyCode: _readString(json['currencyCode']),
+      currencyCode: _readCurrencyCode(json['currencyCode']),
       kind: AccountKind.fromCode(json['kind']),
       balance: _readDouble(json['balance']),
       isArchived: _readBool(json['isArchived']),

@@ -186,7 +186,7 @@ class AppController extends ChangeNotifier {
   TransactionEntryType? get selectedFilter => _selectedFilter;
   HomeSnapshot? get homeData => _homeData;
   UserProfile? get currentUser => _session?.user;
-  String get currencyCode => _session?.user.preferredCurrency ?? 'KZT';
+  String get currencyCode => _session?.user.preferredCurrency ?? 'KGS';
 
   Future<void> _restore() async {
     try {

@@ -21,6 +21,24 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final data = widget.controller.homeData;
+    final pages = [
+      _HomeSection(
+        controller: widget.controller,
+        child: _AddFlowTab(controller: widget.controller),
+      ),
+      _HomeSection(
+        controller: widget.controller,
+        child: _AccountsManagerTab(controller: widget.controller),
+      ),
+      _HomeSection(
+        controller: widget.controller,
+        child: _ReportsTab(controller: widget.controller),
+      ),
+      _HomeSection(
+        controller: widget.controller,
+        child: _HistoryTab(controller: widget.controller),
+      ),
+    ];
 
     return Scaffold(
       body: SafeArea(
@@ -55,13 +73,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ],
                     )
-                  : IndexedStack(
-                      index: _pageIndex,
-                      children: [
-                        _MainWorkspace(controller: widget.controller),
-                        _AnalyticsWorkspace(controller: widget.controller),
-                      ],
-                    ),
+                  : IndexedStack(index: _pageIndex, children: pages),
             ),
           ),
         ),
@@ -80,9 +92,19 @@ class _HomePageState extends State<HomePage> {
             label: 'Главная',
           ),
           NavigationDestination(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+            label: 'Счета',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.query_stats_outlined),
             selectedIcon: Icon(Icons.query_stats_rounded),
             label: 'Аналитика',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.receipt_long_outlined),
+            selectedIcon: Icon(Icons.receipt_long_rounded),
+            label: 'История',
           ),
         ],
       ),
@@ -91,6 +113,30 @@ class _HomePageState extends State<HomePage> {
 }
 
 enum _FilterPeriod { day, month, year, custom }
+enum _HistoryEntryFilter { all, income, expense }
+
+class _HomeSection extends StatelessWidget {
+  const _HomeSection({required this.controller, required this.child});
+
+  final AppController controller;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _Header(controller: controller),
+        const SizedBox(height: 16),
+        if (controller.homeError != null) ...[
+          _InfoBanner(message: controller.homeError!),
+          const SizedBox(height: 16),
+        ],
+        Expanded(child: child),
+      ],
+    );
+  }
+}
 
 class _MainWorkspace extends StatelessWidget {
   const _MainWorkspace({required this.controller});
@@ -342,6 +388,7 @@ class _HistoryTab extends StatefulWidget {
 class _HistoryTabState extends State<_HistoryTab> {
   _FilterPeriod _period = _FilterPeriod.day;
   DateTimeRange? _customRange;
+  _HistoryEntryFilter _entryFilter = _HistoryEntryFilter.all;
   TransactionPage? _page;
   bool _isLoading = false;
   String? _error;
@@ -378,6 +425,42 @@ class _HistoryTabState extends State<_HistoryTab> {
             selectedPeriod: _period,
             customRange: _customRange,
             onSelect: _onSelectPeriod,
+          ),
+          const SizedBox(height: 16),
+          _SectionSurface(
+            title: 'Тип операций',
+            subtitle: 'Покажи все записи или только один поток.',
+            child: SegmentedButton<_HistoryEntryFilter>(
+              segments: const [
+                ButtonSegment<_HistoryEntryFilter>(
+                  value: _HistoryEntryFilter.all,
+                  label: Text('Все'),
+                  icon: Icon(Icons.view_list_rounded),
+                ),
+                ButtonSegment<_HistoryEntryFilter>(
+                  value: _HistoryEntryFilter.income,
+                  label: Text('Доходы'),
+                  icon: Icon(Icons.south_west_rounded),
+                ),
+                ButtonSegment<_HistoryEntryFilter>(
+                  value: _HistoryEntryFilter.expense,
+                  label: Text('Расходы'),
+                  icon: Icon(Icons.north_east_rounded),
+                ),
+              ],
+              selected: {_entryFilter},
+              onSelectionChanged: (selection) async {
+                final next = selection.first;
+                if (_entryFilter == next) {
+                  return;
+                }
+
+                setState(() {
+                  _entryFilter = next;
+                });
+                await _reload();
+              },
+            ),
           ),
           const SizedBox(height: 16),
           if (_error != null) ...[
@@ -516,6 +599,7 @@ class _HistoryTabState extends State<_HistoryTab> {
 
     try {
       final page = await widget.controller.loadTransactions(
+        entryType: _selectedEntryType,
         dateFrom: bounds.start,
         dateTo: bounds.end,
         pageSize: 200,
@@ -604,6 +688,12 @@ class _HistoryTabState extends State<_HistoryTab> {
 
     await _reload();
   }
+
+  TransactionEntryType? get _selectedEntryType => switch (_entryFilter) {
+    _HistoryEntryFilter.all => null,
+    _HistoryEntryFilter.income => TransactionEntryType.income,
+    _HistoryEntryFilter.expense => TransactionEntryType.expense,
+  };
 }
 
 class _ReportsTab extends StatefulWidget {
@@ -640,7 +730,10 @@ class _ReportsTabState extends State<_ReportsTab> {
   Widget build(BuildContext context) {
     final items = _page?.items ?? const <TransactionItem>[];
     final totals = _sumTransactions(items);
-    final categoryItems = _buildCategoryCatalog(items);
+    final categoryItems = _buildCategoryCatalog(
+      items,
+      widget.controller.homeData?.categories ?? const <CategoryModel>[],
+    );
 
     return RefreshIndicator(
       onRefresh: _reload,
@@ -816,30 +909,29 @@ class _Header extends StatelessWidget {
     final user = controller.currentUser;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: _surfaceDecoration(),
       child: Row(
         children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFF111318),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(Icons.wallet_rounded, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Som',
-                  style: theme.textTheme.displaySmall?.copyWith(
-                    color: const Color(0xFF111318),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Простой обзор денег, счетов и последних операций.',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: const Color(0xFF475467),
-                  ),
-                ),
-              ],
+            child: Text(
+              'Som',
+              style: theme.textTheme.headlineMedium?.copyWith(
+                color: const Color(0xFF111318),
+              ),
             ),
           ),
+          const SizedBox(width: 12),
           PopupMenuButton<String>(
             color: Colors.white,
             onSelected: (value) {
@@ -851,7 +943,7 @@ class _Header extends StatelessWidget {
               PopupMenuItem<String>(value: 'logout', child: Text('Выйти')),
             ],
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
               decoration: BoxDecoration(
                 color: const Color(0xFFF9FAFB),
                 borderRadius: BorderRadius.circular(20),
@@ -1242,7 +1334,6 @@ class _QuickComposerCardState extends State<QuickComposerCard> {
                   .map(
                     (category) => _CategoryShortcut(
                       category: category,
-                      entryType: _entryType,
                       enabled: !_isSubmitting,
                       onTap: () => _submit(category),
                     ),
@@ -1494,24 +1585,18 @@ class _NumpadButton extends StatelessWidget {
 class _CategoryShortcut extends StatelessWidget {
   const _CategoryShortcut({
     required this.category,
-    required this.entryType,
     required this.enabled,
     required this.onTap,
   });
 
   final CategoryModel category;
-  final TransactionEntryType entryType;
   final bool enabled;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final tone = entryType == TransactionEntryType.income
-        ? const Color(0xFFEFFAF6)
-        : const Color(0xFFFFF7ED);
-    final iconTone = entryType == TransactionEntryType.income
-        ? const Color(0xFF047857)
-        : const Color(0xFFB45309);
+    final iconTone = _categoryAccentColor(category);
+    final tone = iconTone.withValues(alpha: 0.10);
 
     return InkWell(
       onTap: enabled ? onTap : null,
@@ -2185,6 +2270,8 @@ class _CategoryEditorSheetState extends State<_CategoryEditorSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late CategoryKind _kind;
+  late String _selectedIconKey;
+  late String _selectedColorHex;
   bool _isSaving = false;
   String? _error;
 
@@ -2195,6 +2282,8 @@ class _CategoryEditorSheetState extends State<_CategoryEditorSheet> {
     super.initState();
     _nameController = TextEditingController(text: widget.category?.name ?? '');
     _kind = widget.category?.kind ?? widget.kind;
+    _selectedIconKey = _normalizeCategoryIconKey(widget.category?.icon, _kind);
+    _selectedColorHex = _normalizeCategoryColorHex(widget.category?.color, _kind);
   }
 
   @override
@@ -2270,8 +2359,20 @@ class _CategoryEditorSheetState extends State<_CategoryEditorSheet> {
                       onSelectionChanged: _isSaving
                           ? null
                           : (selection) {
+                              final nextKind = selection.first;
                               setState(() {
-                                _kind = selection.first;
+                                final previousKind = _kind;
+                                _kind = nextKind;
+                                if (_selectedIconKey ==
+                                    _defaultCategoryIconKey(previousKind)) {
+                                  _selectedIconKey =
+                                      _defaultCategoryIconKey(nextKind);
+                                }
+                                if (_selectedColorHex ==
+                                    _defaultCategoryColorHex(previousKind)) {
+                                  _selectedColorHex =
+                                      _defaultCategoryColorHex(nextKind);
+                                }
                               });
                             },
                     ),
@@ -2285,6 +2386,73 @@ class _CategoryEditorSheetState extends State<_CategoryEditorSheet> {
                       }
                       return null;
                     },
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedIconKey,
+                    decoration: const InputDecoration(labelText: 'Иконка'),
+                    items: _categoryIconOptions
+                        .map(
+                          (option) => DropdownMenuItem<String>(
+                            value: option.key,
+                            child: Row(
+                              children: [
+                                Icon(option.icon, size: 20),
+                                const SizedBox(width: 12),
+                                Text(option.label),
+                              ],
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
+                    onChanged: _isSaving
+                        ? null
+                        : (value) {
+                            if (value == null) {
+                              return;
+                            }
+
+                            setState(() {
+                              _selectedIconKey = value;
+                            });
+                          },
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedColorHex,
+                    decoration: const InputDecoration(labelText: 'Цвет'),
+                    items: _categoryColorOptions
+                        .map(
+                          (option) => DropdownMenuItem<String>(
+                            value: option.hex,
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 18,
+                                  height: 18,
+                                  decoration: BoxDecoration(
+                                    color: option.color,
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(option.label),
+                              ],
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
+                    onChanged: _isSaving
+                        ? null
+                        : (value) {
+                            if (value == null) {
+                              return;
+                            }
+
+                            setState(() {
+                              _selectedColorHex = value;
+                            });
+                          },
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 16),
@@ -2333,8 +2501,8 @@ class _CategoryEditorSheetState extends State<_CategoryEditorSheet> {
           UpdateCategoryDraft(
             categoryId: widget.category!.id,
             name: _nameController.text.trim(),
-            icon: widget.category!.icon,
-            color: widget.category!.color,
+            icon: _selectedIconKey,
+            color: _selectedColorHex,
             isArchived: false,
             displayOrder: widget.category!.displayOrder,
           ),
@@ -2344,6 +2512,8 @@ class _CategoryEditorSheetState extends State<_CategoryEditorSheet> {
           CreateCategoryDraft(
             name: _nameController.text.trim(),
             kind: _kind,
+            icon: _selectedIconKey,
+            color: _selectedColorHex,
           ),
         );
       }
@@ -3893,7 +4063,172 @@ IconData _accountIcon(AccountKind kind) => switch (kind) {
   AccountKind.investment => Icons.trending_up_rounded,
 };
 
+class _CategoryIconOption {
+  const _CategoryIconOption({
+    required this.key,
+    required this.label,
+    required this.icon,
+  });
+
+  final String key;
+  final String label;
+  final IconData icon;
+}
+
+class _CategoryColorOption {
+  const _CategoryColorOption({
+    required this.hex,
+    required this.label,
+    required this.color,
+  });
+
+  final String hex;
+  final String label;
+  final Color color;
+}
+
+const _categoryIconOptions = [
+  _CategoryIconOption(
+    key: 'restaurant',
+    label: 'Еда',
+    icon: Icons.restaurant_rounded,
+  ),
+  _CategoryIconOption(
+    key: 'directions_car',
+    label: 'Транспорт',
+    icon: Icons.directions_car_filled_rounded,
+  ),
+  _CategoryIconOption(key: 'home', label: 'Дом', icon: Icons.home_rounded),
+  _CategoryIconOption(
+    key: 'favorite',
+    label: 'Здоровье',
+    icon: Icons.favorite_rounded,
+  ),
+  _CategoryIconOption(
+    key: 'movie',
+    label: 'Развлечения',
+    icon: Icons.movie_rounded,
+  ),
+  _CategoryIconOption(
+    key: 'payments',
+    label: 'Зарплата',
+    icon: Icons.payments_rounded,
+  ),
+  _CategoryIconOption(key: 'work', label: 'Работа', icon: Icons.work_rounded),
+  _CategoryIconOption(
+    key: 'redeem',
+    label: 'Подарок',
+    icon: Icons.redeem_rounded,
+  ),
+  _CategoryIconOption(
+    key: 'savings',
+    label: 'Накопления',
+    icon: Icons.savings_rounded,
+  ),
+  _CategoryIconOption(
+    key: 'shopping_bag',
+    label: 'Покупки',
+    icon: Icons.shopping_bag_rounded,
+  ),
+];
+
+const _categoryColorOptions = [
+  _CategoryColorOption(
+    hex: '#E76F51',
+    label: 'Коралл',
+    color: Color(0xFFE76F51),
+  ),
+  _CategoryColorOption(
+    hex: '#F4A261',
+    label: 'Песочный',
+    color: Color(0xFFF4A261),
+  ),
+  _CategoryColorOption(
+    hex: '#E9C46A',
+    label: 'Золото',
+    color: Color(0xFFE9C46A),
+  ),
+  _CategoryColorOption(
+    hex: '#2A9D8F',
+    label: 'Мята',
+    color: Color(0xFF2A9D8F),
+  ),
+  _CategoryColorOption(
+    hex: '#457B9D',
+    label: 'Синий',
+    color: Color(0xFF457B9D),
+  ),
+  _CategoryColorOption(
+    hex: '#6D597A',
+    label: 'Слива',
+    color: Color(0xFF6D597A),
+  ),
+  _CategoryColorOption(
+    hex: '#264653',
+    label: 'Графит',
+    color: Color(0xFF264653),
+  ),
+  _CategoryColorOption(
+    hex: '#8AB17D',
+    label: 'Олива',
+    color: Color(0xFF8AB17D),
+  ),
+];
+
+String _defaultCategoryIconKey(CategoryKind kind) =>
+    kind == CategoryKind.income ? 'payments' : 'restaurant';
+
+String _defaultCategoryColorHex(CategoryKind kind) =>
+    kind == CategoryKind.income ? '#2A9D8F' : '#E76F51';
+
+String _normalizeCategoryIconKey(String? key, CategoryKind kind) {
+  final normalized = key?.trim();
+  if (normalized != null &&
+      _categoryIconOptions.any((option) => option.key == normalized)) {
+    return normalized;
+  }
+
+  return _defaultCategoryIconKey(kind);
+}
+
+String _normalizeCategoryColorHex(String? color, CategoryKind kind) {
+  final normalized = color?.trim().toUpperCase();
+  if (normalized != null &&
+      _categoryColorOptions.any(
+        (option) => option.hex.toUpperCase() == normalized,
+      )) {
+    return normalized;
+  }
+
+  return _defaultCategoryColorHex(kind);
+}
+
+IconData _iconByCategoryKey(String key) {
+  return _categoryIconOptions
+      .firstWhere(
+        (option) => option.key == key,
+        orElse: () => _categoryIconOptions.first,
+      )
+      .icon;
+}
+
+Color _colorByCategoryHex(String hex) {
+  return _categoryColorOptions
+      .firstWhere(
+        (option) => option.hex.toUpperCase() == hex.toUpperCase(),
+        orElse: () => _categoryColorOptions.first,
+      )
+      .color;
+}
+
 IconData _categoryIcon(CategoryModel category) {
+  final iconKey = category.icon?.trim();
+  if (iconKey != null && iconKey.isNotEmpty) {
+    return _iconByCategoryKey(
+      _normalizeCategoryIconKey(iconKey, category.kind),
+    );
+  }
+
   final name = category.name.toLowerCase();
 
   if (name.contains('еда') || name.contains('food')) {
@@ -4110,8 +4445,12 @@ _TransactionTotals _sumTransactions(List<TransactionItem> transactions) {
 
 List<_CategoryCatalogItem> _buildCategoryCatalog(
   List<TransactionItem> transactions,
+  List<CategoryModel> categories,
 ) {
   final grouped = <String, List<TransactionItem>>{};
+  final categoriesById = {
+    for (final category in categories) category.id: category,
+  };
 
   for (final transaction in transactions) {
     if (transaction.entryType == TransactionEntryType.transferIn ||
@@ -4134,26 +4473,26 @@ List<_CategoryCatalogItem> _buildCategoryCatalog(
               (sum, item) => sum + item.amount,
             );
             final sample = categoryTransactions.first;
-            final category = CategoryModel(
-              id: sample.categoryId ?? entry.key,
-              name: entry.key,
-              kind: sample.entryType == TransactionEntryType.income
-                  ? CategoryKind.income
-                  : CategoryKind.expense,
-              icon: null,
-              color: null,
-              isSystem: false,
-              isArchived: false,
-              displayOrder: 0,
-            );
+            final category =
+                categoriesById[sample.categoryId] ??
+                CategoryModel(
+                  id: sample.categoryId ?? entry.key,
+                  name: entry.key,
+                  kind: sample.entryType == TransactionEntryType.income
+                      ? CategoryKind.income
+                      : CategoryKind.expense,
+                  icon: null,
+                  color: null,
+                  isSystem: false,
+                  isArchived: false,
+                  displayOrder: 0,
+                );
 
             return _CategoryCatalogItem(
               name: entry.key,
               amount: amount,
               count: categoryTransactions.length,
-              color: sample.entryType == TransactionEntryType.income
-                  ? const Color(0xFF047857)
-                  : const Color(0xFFB45309),
+              color: _categoryAccentColor(category),
               icon: _categoryIcon(category),
               transactions: List<TransactionItem>.unmodifiable(
                 categoryTransactions,
@@ -4192,6 +4531,12 @@ String _categoryKindLabel(CategoryKind kind) =>
 Color _categoryAccentColor(CategoryModel category) {
   final raw = category.color?.trim();
   if (raw != null && raw.isNotEmpty) {
+    if (_categoryColorOptions.any(
+      (option) => option.hex.toUpperCase() == raw.toUpperCase(),
+    )) {
+      return _colorByCategoryHex(raw);
+    }
+
     final normalized = raw.replaceFirst('#', '');
     final parsed = int.tryParse(normalized, radix: 16);
     if (parsed != null) {

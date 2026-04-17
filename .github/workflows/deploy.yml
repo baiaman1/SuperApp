@@ -1,9 +1,10 @@
-name: Deploy Backend
+name: Deploy Backend and Build APK
 
 on:
   push:
     branches:
       - master
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -86,3 +87,40 @@ jobs:
             sudo systemctl status superapp --no-pager -l
             curl -fsS http://127.0.0.1:5000/api/health
           "
+
+  build_android_apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.6'
+          channel: stable
+          cache: true
+
+      - name: Install Flutter dependencies
+        working-directory: src/frontend/superapp_mobile
+        run: flutter pub get
+
+      - name: Build Android APK
+        working-directory: src/frontend/superapp_mobile
+        run: >
+          flutter build apk --release
+          --dart-define=API_BASE_URL=http://32.194.207.165
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: superapp-mobile-apk-${{ github.sha }}
+          path: src/frontend/superapp_mobile/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error

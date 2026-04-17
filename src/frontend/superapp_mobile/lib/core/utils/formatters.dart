@@ -5,12 +5,17 @@ String formatMoney(
   required String currencyCode,
   bool signed = false,
 }) {
-  final symbol = switch (currencyCode.toUpperCase()) {
-    'KZT' => '₸',
+  final normalizedCode = switch (currencyCode.trim().toUpperCase()) {
+    '' || 'KZT' => 'KGS',
+    final code => code,
+  };
+
+  final symbol = switch (normalizedCode) {
+    'KGS' => 'сом',
     'USD' => r'$',
     'EUR' => '€',
     'RUB' => '₽',
-    _ => currencyCode.toUpperCase(),
+    _ => normalizedCode,
   };
 
   final formatter = NumberFormat.currency(

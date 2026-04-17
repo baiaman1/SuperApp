@@ -250,14 +250,14 @@ class _PreviewPanel extends StatelessWidget {
               ),
               child: Column(
                 children: const [
-                  _PreviewMetric(label: 'Баланс', value: '1 214 500 ₸'),
+                  _PreviewMetric(label: 'Баланс', value: '1 214 500 сом'),
                   SizedBox(height: 14),
                   Row(
                     children: [
                       Expanded(
                         child: _PreviewStat(
                           label: 'Доход',
-                          value: '+570 000 ₸',
+                          value: '+570 000 сом',
                           tone: Color(0xFF047857),
                         ),
                       ),
@@ -265,7 +265,7 @@ class _PreviewPanel extends StatelessWidget {
                       Expanded(
                         child: _PreviewStat(
                           label: 'Расход',
-                          value: '-158 200 ₸',
+                          value: '-158 200 сом',
                           tone: Color(0xFFB45309),
                         ),
                       ),
