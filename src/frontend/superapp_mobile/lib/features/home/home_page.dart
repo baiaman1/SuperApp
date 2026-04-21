@@ -2828,24 +2828,25 @@ class _TransferSheetState extends State<_TransferSheet> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final accounts =
-        widget.controller.homeData?.accounts ?? const <MoneyAccount>[];
+Widget build(BuildContext context) {
+  final accounts =
+      widget.controller.homeData?.accounts ?? const <MoneyAccount>[];
 
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+  return DecoratedBox(
+    decoration: const BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    child: Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 14,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 20,
       ),
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 14,
-          bottom: MediaQuery.viewInsetsOf(context).bottom + 20,
-        ),
-        child: ListView(
-          shrinkWrap: true,
+      child: SingleChildScrollView( // ✅ вместо ListView
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
               child: Container(
@@ -2858,73 +2859,142 @@ class _TransferSheetState extends State<_TransferSheet> {
               ),
             ),
             const SizedBox(height: 18),
+
             Text(
               'Перевод между счетами',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
-            const SizedBox(height: 8),
-            // const Text(
-            //   'Деньги уйдут с одного счета и придут на другой одной операцией.',
-            // ),
+
             const SizedBox(height: 18),
+
             Form(
               key: _formKey,
               child: Column(
                 children: [
+
+                  /// 🔴 СО СЧЕТА
                   DropdownButtonFormField<String>(
-                    initialValue: _fromAccountId,
-                    decoration: const InputDecoration(labelText: 'Со счета'),
-                    items: accounts
-                        .map(
-                          (account) => DropdownMenuItem<String>(
-                            value: account.id,
-                            child: Text(account.name),
-                          ),
-                        )
-                        .toList(growable: false),
+                    value: _fromAccountId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Со счета',
+                    ),
+
+                    selectedItemBuilder: (context) {
+                      return accounts.map((account) {
+                        return Text(
+                          '${account.name} '
+                          ' - ${account.balance} ${account.currencyCode}',
+                          overflow: TextOverflow.ellipsis,
+                        );
+                      }).toList();
+                    },
+
+                    items: accounts.map((account) {
+                      return DropdownMenuItem<String>(
+                        value: account.id,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(account.name),
+                            Text(
+                              formatMoney(
+                                account.balance,
+                                currencyCode: account.currencyCode,
+                              ),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF6B7280),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+
                     onChanged: _isSaving
                         ? null
                         : (value) => setState(() => _fromAccountId = value),
-                    validator: (value) => value == null ? 'Выбери счет.' : null,
+
+                    validator: (value) =>
+                        value == null ? 'Выбери счет.' : null,
                   ),
+
                   const SizedBox(height: 16),
+
+                  /// 🔥 Dropdown с балансом
                   DropdownButtonFormField<String>(
-                    initialValue: _toAccountId,
-                    decoration: const InputDecoration(labelText: 'На счет'),
-                    items: accounts
-                        .map(
-                          (account) => DropdownMenuItem<String>(
-                            value: account.id,
-                            child: Text(account.name),
-                          ),
-                        )
-                        .toList(growable: false),
+                    value: _toAccountId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'На счет',
+                    ),
+
+                    /// 👇 ВЫБРАННОЕ значение (ТОЛЬКО 1 строка)
+                    selectedItemBuilder: (context) {
+                      return accounts.map((account) {
+                        return Text(
+                          '${account.name} '
+                          ' - ${account.balance} ${account.currencyCode}',
+                          overflow: TextOverflow.ellipsis,
+                        );
+                      }).toList();
+                    },
+
+                    /// 👇 СПИСОК (здесь можно 2 строки)
+                    items: accounts.map((account) {
+                      return DropdownMenuItem<String>(
+                        value: account.id,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(account.name),
+                            Text(
+                              formatMoney(
+                                account.balance,
+                                currencyCode: account.currencyCode,
+                              ),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF6B7280),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+
                     onChanged: _isSaving
                         ? null
                         : (value) => setState(() => _toAccountId = value),
-                    validator: (value) => value == null ? 'Выбери счет.' : null,
                   ),
+
                   const SizedBox(height: 16),
+
+                  /// 💰 Сумма
                   TextFormField(
                     controller: _amountController,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    decoration: const InputDecoration(labelText: 'Сумма'),
+                    decoration:
+                        const InputDecoration(labelText: 'Сумма'),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Укажи сумму.';
                       }
-                      final amount = double.tryParse(
-                        value.replaceAll(',', '.'),
-                      );
+                      final amount =
+                          double.tryParse(value.replaceAll(',', '.'));
                       if (amount == null || amount <= 0) {
                         return 'Сумма должна быть больше нуля.';
                       }
                       return null;
                     },
                   ),
+
                   const SizedBox(height: 16),
+
+                  /// 📝 Комментарий
                   TextFormField(
                     controller: _noteController,
                     decoration: const InputDecoration(
@@ -2933,11 +3003,15 @@ class _TransferSheetState extends State<_TransferSheet> {
                     ),
                     maxLines: 2,
                   ),
+
                   if (_error != null) ...[
                     const SizedBox(height: 16),
                     _InfoBanner(message: _error!),
                   ],
+
                   const SizedBox(height: 20),
+
+                  /// 🚀 Кнопка
                   FilledButton.icon(
                     onPressed: _isSaving ? null : _submit,
                     icon: _isSaving
@@ -2947,7 +3021,8 @@ class _TransferSheetState extends State<_TransferSheet> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.compare_arrows_rounded),
-                    label: Text(_isSaving ? 'Переводим...' : 'Сделать перевод'),
+                    label: Text(
+                        _isSaving ? 'Переводим...' : 'Сделать перевод'),
                   ),
                 ],
               ),
@@ -2955,8 +3030,9 @@ class _TransferSheetState extends State<_TransferSheet> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
@@ -4092,8 +4168,8 @@ const _categoryIconOptions = [
   ),
   _CategoryIconOption(
     key: 'directions_car',
-    label: 'Транспорт',
-    icon: Icons.directions_car_filled_rounded,
+    label: 'Такси',
+    icon: Icons.local_taxi,
   ),
   _CategoryIconOption(key: 'home', label: 'Дом', icon: Icons.home_rounded),
   _CategoryIconOption(
@@ -4135,7 +4211,47 @@ const _categoryIconOptions = [
   _CategoryIconOption(
     key: 'bus',
     label: 'Проездные',
-    icon: Icons.bus_alert_rounded,
+    icon: Icons.directions_bus,
+  ),
+  _CategoryIconOption(
+    key: 'ligth',
+    label: 'Коммуналка',
+    icon: Icons.tungsten,
+  ),
+  _CategoryIconOption(
+    key: 'money',
+    label: 'Деньги',
+    icon: Icons.local_atm,
+  ),
+  _CategoryIconOption(
+    key: 'cut',
+    label: 'Красота',
+    icon: Icons.content_cut,
+  ),
+  _CategoryIconOption(
+    key: 'woman',
+    label: 'Женское',
+    icon: Icons.woman,
+  ),
+  _CategoryIconOption(
+    key: 'basket',
+    label: 'Корзина',
+    icon: Icons.local_grocery_store,
+  ),
+  _CategoryIconOption(
+    key: 'car',
+    label: 'Авто',
+    icon: Icons.directions_car,
+  ),
+  _CategoryIconOption(
+    key: 'description',
+    label: 'Список',
+    icon: Icons.description,
+  ),
+  _CategoryIconOption(
+    key: 'school',
+    label: 'Школа',
+    icon: Icons.school,
   ),
 ];
 
