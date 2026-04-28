@@ -317,12 +317,50 @@ class AppController extends ChangeNotifier {
 
   List<CategoryModel> categoriesFor(TransactionEntryType entryType) {
     final kind = entryType.categoryKind;
-    return _homeData?.categories
+    final items =
+        _homeData?.categories
             .where(
               (category) => category.kind == kind && !category.isArchived,
             )
-            .toList(growable: false) ??
-        const <CategoryModel>[];
+            .toList(growable: true) ??
+        <CategoryModel>[];
+
+    final usage = <String, int>{};
+    for (final transaction
+        in _homeData?.transactions.items ?? const <TransactionItem>[]) {
+      final matchesKind =
+          (kind == CategoryKind.income &&
+              transaction.entryType == TransactionEntryType.income) ||
+          (kind == CategoryKind.expense &&
+              transaction.entryType == TransactionEntryType.expense);
+      if (!matchesKind) {
+        continue;
+      }
+
+      final categoryId = transaction.categoryId?.trim();
+      if (categoryId == null || categoryId.isEmpty) {
+        continue;
+      }
+
+      usage.update(categoryId, (value) => value + 1, ifAbsent: () => 1);
+    }
+
+    items.sort((left, right) {
+      final usageCompare =
+          (usage[right.id] ?? 0).compareTo(usage[left.id] ?? 0);
+      if (usageCompare != 0) {
+        return usageCompare;
+      }
+
+      final orderCompare = left.displayOrder.compareTo(right.displayOrder);
+      if (orderCompare != 0) {
+        return orderCompare;
+      }
+
+      return left.name.toLowerCase().compareTo(right.name.toLowerCase());
+    });
+
+    return List<CategoryModel>.unmodifiable(items);
   }
 
   Future<void> createTransaction(CreateTransactionDraft draft) async {
